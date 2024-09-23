@@ -306,7 +306,7 @@ def bfs(arena):
     visited.add(start_state.current_position)
 
     nodes_expanded = 0  # Number of nodes expanded
-    max_nodes_stored = len(queue)  # Initial queue size
+    max_nodes_stored = len(visited)  # Track max nodes stored based on visited set
     max_search_depth = 0  # Track max depth
 
     # LOG: Starting BFS
@@ -316,7 +316,7 @@ def bfs(arena):
         current_state = queue.popleft()
         nodes_expanded += 1
 
-        # LOG: Print node being expanded and position
+        # LOG: Expanding node details
         print(f"Expanding node at position {current_state.current_position}, cost: {current_state.cost}")
 
         # Check if the goal is reached
@@ -328,7 +328,7 @@ def bfs(arena):
             total_time = end_time - start_time
             total_memory = (end_memory - start_memory) / 1024  # Convert to kB
 
-            # LOG: Goal found
+            # LOG: Goal found and nodes expanded
             print(f"Goal found at {current_state.current_position}, cost: {current_state.cost}, nodes expanded: {nodes_expanded}")
 
             # Reconstruct path
@@ -346,6 +346,9 @@ def bfs(arena):
                     solved_arena[row][col] = '*'
             solved_arena = ["".join(row) for row in solved_arena]
 
+            # LOG: BFS results summary
+            print(f"BFS completed. Cost: {cost}, Nodes Expanded: {nodes_expanded}, Max Nodes Stored: {max_nodes_stored}, Max Search Depth: {max_search_depth}")
+
             return (solved_arena, cost, nodes_expanded, max_nodes_stored,
                     max_search_depth, total_time, total_memory)
 
@@ -358,17 +361,23 @@ def bfs(arena):
                 queue.append(child)
                 max_search_depth = max(max_search_depth, child.cost)
 
-        # LOG: Queue size and visited set size
-        print(f"Queue size: {len(queue)}, Visited nodes: {len(visited)}")
+                # LOG: Child added to queue
+                print(f"Added child at position {child.current_position}, cost: {child.cost}")
 
-        # Update max_nodes_stored
-        max_nodes_stored = max(max_nodes_stored, len(queue))
+        # Calculate max_nodes_stored based on the size of the visited set
+        max_nodes_stored = max(max_nodes_stored, len(visited))
+
+        # LOG: Queue size and visited set
+        print(f"Queue size: {len(queue)}, Visited nodes: {len(visited)}")
 
     # If no solution is found
     end_time = time.time()
     end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     total_time = end_time - start_time
     total_memory = (end_memory - start_memory) / 1024  # Convert to kB
+
+    # LOG: No solution found
+    print(f"No solution found. Nodes Expanded: {nodes_expanded}, Max Nodes Stored: {max_nodes_stored}, Max Search Depth: {max_search_depth}")
 
     return ([], -1, nodes_expanded, max_nodes_stored,
             max_search_depth, total_time, total_memory)
