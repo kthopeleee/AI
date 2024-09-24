@@ -306,7 +306,7 @@ def bfs(arena):
     visited.add(start_state.current_position)
 
     nodes_expanded = 0  # Number of nodes expanded
-    max_nodes_stored = len(visited)  # Track max nodes stored based on visited set
+    max_nodes_stored = len(queue) + len(visited)  # Initial max nodes stored (queue + visited)
     max_search_depth = 0  # Track max depth
 
     # LOG: Starting BFS
@@ -357,15 +357,15 @@ def bfs(arena):
                           current_state.move_down, current_state.move_left]:
             child = move_func()
             if child and child.current_position not in visited:
-                visited.add(child.current_position)  # Track only positions
+                visited.add(child.current_position) 
                 queue.append(child)
                 max_search_depth = max(max_search_depth, child.cost)
 
                 # LOG: Child added to queue
                 print(f"Added child at position {child.current_position}, cost: {child.cost}")
 
-        # Calculate max_nodes_stored based on the size of the visited set
-        max_nodes_stored = max(max_nodes_stored, len(visited))
+        # Update max_nodes_stored based on the size of the queue and visited set
+        max_nodes_stored = max(max_nodes_stored, len(queue) + len(visited))
 
         # LOG: Queue size and visited set
         print(f"Queue size: {len(queue)}, Visited nodes: {len(visited)}")
@@ -374,7 +374,7 @@ def bfs(arena):
     end_time = time.time()
     end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     total_time = end_time - start_time
-    total_memory = (end_memory - start_memory) / 1024  # Convert to kB
+    total_memory = (end_memory - start_memory) / 1024  
 
     # LOG: No solution found
     print(f"No solution found. Nodes Expanded: {nodes_expanded}, Max Nodes Stored: {max_nodes_stored}, Max Search Depth: {max_search_depth}")
