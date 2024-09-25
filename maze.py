@@ -255,8 +255,7 @@ class MazeState:
 				
 		return self.current_position == other.current_position
 # Global array of movement functions
-MOVE_FUNCS = [MazeState.move_up, MazeState.move_right,
-              MazeState.move_down, MazeState.move_left]
+
 		#=================================#
 		#*#*#*# Your code ends here #*#*#*#
 		#=================================#
@@ -264,68 +263,51 @@ MOVE_FUNCS = [MazeState.move_up, MazeState.move_right,
 	#=====================================================================================#
 	#*#*#*# Optional: Write any other functions you may need in the MazeState Class #*#*#*#
 	#=====================================================================================#
+	def __lt__(self, other):
+		'''
+		Compares two states based on the sum of the cost and heuristic.
+		'''
+		return (self.cost + self.heuristic()) < (other.cost + other.heuristic())
+	def heuristic(self):
+		return abs(self.current_position[0] - self.goal[0]) + abs(self.current_position[1] - self.goal[1])
+
 	#=================================#
 	#*#*#*# Your code ends here #*#*#*#
 	#=================================#
-
 
 
 #================================================================================#
 #*#*#*# Optional: You may write helper functions in this space if required #*#*#*#
 #================================================================================#
 
-def __lt__(self, other):
-		'''
-		Compares two states based on the sum of the cost and heuristic.
-		'''
-		return (self.cost + self.heuristic()) < (other.cost + other.heuristic())
-
-def heuristic(self):
-		'''
-		Returns the Manhattan distance between the current position and the goal.
-		'''
-
-		return abs(self.current_position[0] - self.goal[0]) + abs(self.current_position[1] - self.goal[1])
 # Define the helper function
 def track_time_and_memory(start_time, start_memory):
-    """
-    Tracks the time and memory usage since the given start time and memory.
+	end_time = time.time()
+	end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+	total_time = end_time - start_time
+	total_memory = (end_memory - start_memory) / 1024  # Convert to kB
 
-    Parameters:
-    - start_time: The starting time when the process began.
-    - start_memory: The starting memory usage when the process began.
-
-    Returns:
-    - total_time: The total elapsed time in seconds.
-    - total_memory: The total memory used in kilobytes (kB).
-    """
-    end_time = time.time()
-    end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
-    total_time = end_time - start_time
-    total_memory = (end_memory - start_memory) / 1024  # Convert to kB
-
-    return total_time, total_memory
+	return total_time, total_memory
 
 def mark_path_in_arena(arena,state):
-    # Convert arena to a list of lists to allow modification
-	path = []
-	while state:
-		path.append(state.current_position)
-		state = state.parent
-	path.reverse()  # Reverse the path to get start-to-goal order
+	# Convert arena to a list of lists to allow modification
+		path = []
+		while state:
+			path.append(state.current_position)
+			state = state.parent
+		path.reverse()  # Reverse the path to get start-to-goal order
 
-	solved_arena = [list(row) for row in arena]
-    
-    # Mark the path in the arena, except for 's' (start) and 'g' (goal)
-	for (row, col) in path:
-		if solved_arena[row][col] not in ['s', 'g']:
-			solved_arena[row][col] = '*'
-    
-    # Convert the arena back to a list of strings
-	solved_arena = ["".join(row) for row in solved_arena]
-    
-	return solved_arena
+		solved_arena = [list(row) for row in arena]
+		
+		# Mark the path in the arena, except for 's' (start) and 'g' (goal)
+		for (row, col) in path:
+			if solved_arena[row][col] not in ['s', 'g']:
+				solved_arena[row][col] = '*'
+		
+		# Convert the arena back to a list of strings
+		solved_arena = ["".join(row) for row in solved_arena]
+		
+		return solved_arena
 
 # Now define the bfs function
 def bfs(arena):
@@ -372,12 +354,9 @@ def bfs(arena):
     total_time, total_memory = track_time_and_memory(start_time, start_memory)
     return ([], -1, nodes_expanded, max_nodes_stored, max_search_depth, total_time, total_memory)
 
-
-    total_time, total_memory = track_time_and_memory(start_time, start_memory)
-    return ([], -1, nodes_expanded, max_nodes_stored, max_search_depth, total_time, total_memory)
 	#=================================#
-		#*#*#*# Your code ends here #*#*#*#
-		#=================================#
+	#*#*#*# Your code ends here #*#*#*#
+	#=================================#
 
 '''
 This function runs Depth First Search on the input arena (which is a list of str)
@@ -395,16 +374,15 @@ def dfs(arena):
     start_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     start_state = MazeState(arena)
-    stack = [start_state]  # The frontier for DFS (LIFO)
-    visited = set()  # Use this to track visited nodes
-    visited.add(start_state.current_position)
+    frontier = [start_state]  # Stack for DFS (LIFO)
+    explored = set()  # To track explored nodes
 
     nodes_expanded = 0  # Number of nodes expanded
-    max_nodes_stored = len(stack)  # Initial nodes in memory (only stack)
+    max_nodes_stored = len(frontier)  # Track the size of the stack (frontier)
     max_search_depth = 0  # Maximum depth achieved
 
-    while stack:
-        current_state = stack.pop()
+    while frontier:
+        current_state = frontier.pop()  # Pop from stack (LIFO)
 
         # Check if the goal is reached
         if current_state.current_position == current_state.goal:
@@ -413,47 +391,48 @@ def dfs(arena):
 
             cost = current_state.cost
 
-            # Modify the arena to mark the path with '*'
+            # Reconstruct the path to mark the solution in the arena
             solved_arena = mark_path_in_arena(arena, current_state)
             return (solved_arena, cost, nodes_expanded, max_nodes_stored,
                     max_search_depth, total_time, total_memory)
 
+        # Add node to explored after expanding
+        explored.add(current_state.current_position)
+
         nodes_expanded += 1
 
-        # Reverse URDL order to maintain proper DFS order
-        children = current_state.expand()[::-1]
+        # Expand neighbors (URDL order, reversed for proper DFS behavior)
+        neighbors = current_state.expand()[::-1]  # Reverse order for correct DFS
 
-        for child in children:
-            if child.current_position not in visited:
-                visited.add(child.current_position)  # Mark the child node as visited
-                stack.append(child)
-                max_search_depth = max(max_search_depth, child.cost)
+        for neighbor in neighbors:
+            if neighbor.current_position not in explored and neighbor not in frontier:
+                frontier.append(neighbor)
+                max_search_depth = max(max_search_depth, neighbor.cost)  # Track search depth
 
-        # Calculate total nodes stored only based on the stack (frontier)
-        max_nodes_stored = max(max_nodes_stored, len(stack))
+        # Track maximum number of nodes stored in memory
+        max_nodes_stored = max(max_nodes_stored, len(frontier)+len(explored))
 
-        # Debugging: Log frontier size and max nodes stored at each step
-        print(f"Frontier size: {len(stack)}")
+        # Debugging: Log important values for diagnostics
+        print(f"Frontier size: {len(frontier)}")
         print(f"Max nodes stored so far: {max_nodes_stored}")
+        print(f"Max search depth so far: {max_search_depth}")
 
-    # If no solution is found
+    # If no solution is found, return failure
     total_time, total_memory = track_time_and_memory(start_time, start_memory)
 
-    return ([], -1, nodes_expanded, max_nodes_stored,
-            max_search_depth, total_time, total_memory)
-
+    return ([], -1, nodes_expanded, max_nodes_stored, max_search_depth, total_time, total_memory)
 '''
 This function runs A* Search on the input arena (which is a list of str)
 Returns a ([], int) tuple where the [] represents the solved arena as a list of str and the int represents the cost of the solution
 '''
+#python3 maze.py -m arena1.txt -astar
+
 def astar(arena):
     """
     This function runs A* Search on the input arena.
     Returns a ([], int) tuple where the [] represents the solved arena as a list of str
     and the int represents the cost of the solution.
     """
-    import time
-    import resource
     import heapq
 
     # Start time and memory measurement
@@ -499,7 +478,7 @@ def astar(arena):
 
         # URDL order
         for move_func in MOVE_FUNCS:
-            child = move_func()
+            child = move_func(current_state)  # Pass current_state to move_func
             if child:
                 child_pos = child.current_position
                 child_cost = child.cost
@@ -521,7 +500,6 @@ def astar(arena):
 
     return ([], -1, nodes_expanded, max_nodes_stored,
             max_search_depth, total_time, total_memory)
-	
 '''
 This function runs Iterative Deepening A* Search on the input arena (which is a list of str)
 Returns a ([], int) tuple where the [] represents the solved arena as a list of str and the int represents the cost of the solution
