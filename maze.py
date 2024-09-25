@@ -427,80 +427,87 @@ Returns a ([], int) tuple where the [] represents the solved arena as a list of 
 '''
 #python3 maze.py -m arena1.txt -astar
 
+import heapq
+
 def astar(arena):
     """
     This function runs A* Search on the input arena.
     Returns a ([], int) tuple where the [] represents the solved arena as a list of str
     and the int represents the cost of the solution.
     """
-    import heapq
-
     # Start time and memory measurement
     start_time = time.time()
     start_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     start_state = MazeState(arena)
-    open_set = []
-    heapq.heappush(open_set, (start_state.cost + start_state.heuristic(), start_state))
-    visited = {}
+    frontier = []  # Min-heap for priority queue (heapq)
+    heapq.heappush(frontier, (start_state.cost + start_state.heuristic(), start_state))
 
+    explored = set()  # Explored nodes set to track visited nodes
     nodes_expanded = 0
-    max_nodes_stored = len(open_set) + len(visited)
-    max_search_depth = 0
+    max_nodes_stored = len(frontier)  # Initial max nodes stored
+    max_search_depth = 0  # Track the maximum search depth
 
-    while open_set:
-        _, current_state = heapq.heappop(open_set)
-        nodes_expanded += 1
+    # To avoid multiple insertions of the same node with different priorities
+    seen_nodes = {}  # Maps positions to their lowest f(n) value
+
+    while frontier:
+        # Get the node with the lowest f(n) from the frontier
+        _, current_state = heapq.heappop(frontier)
+
+        # Skip if this state has been seen with a lower cost
+        if current_state.current_position in seen_nodes and \
+           seen_nodes[current_state.current_position] < current_state.cost + current_state.heuristic():
+            continue
+
+        # Add the current state to the explored set
+        explored.add(current_state.current_position)
 
         # Check if the goal is reached
         if current_state.current_position == current_state.goal:
             # End time and memory measurement
-            end_time = time.time()
-            end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
-            total_time = end_time - start_time
-            total_memory = (end_memory - start_memory) / 1024  # Convert to kB
+            total_time, total_memory = track_time_and_memory(start_time, start_memory)
 
             # Reconstruct the path
-            path = []
             cost = current_state.cost
-            while current_state:
-                path.append(current_state.current_position)
-                current_state = current_state.parent
-            path.reverse()
 
             # Modify the arena to mark the path with '*'
-            solved_arena = mark_path_in_arena(arena, path)
+            solved_arena = mark_path_in_arena(arena, current_state)
+
             return (solved_arena, cost, nodes_expanded, max_nodes_stored,
                     max_search_depth, total_time, total_memory)
 
-        visited[current_state.current_position] = current_state.cost
+        # Expand neighbors in URDL order
+        nodes_expanded += 1
+        neighbors = current_state.expand()
 
-        # URDL order
-		
-        for move_func in MOVE_FUNCS:
-            child = move_func(current_state)  # Pass current_state to move_func
-            if child:
-                child_pos = child.current_position
-                child_cost = child.cost
+        for neighbor in neighbors:
+            f_cost = neighbor.cost + neighbor.heuristic()
 
-                if child_pos not in visited or visited[child_pos] > child_cost:
-                    heapq.heappush(open_set, (child.cost + child.heuristic(), child))
-                    visited[child_pos] = child_cost
-                    max_search_depth = max(max_search_depth, child.cost)
+            # If the neighbor has not been explored or has a better f(n), push it to the frontier
+            if (neighbor.current_position not in explored and 
+               (neighbor.current_position not in seen_nodes or seen_nodes[neighbor.current_position] > f_cost)):
+                
+                heapq.heappush(frontier, (f_cost, neighbor))
+                seen_nodes[neighbor.current_position] = f_cost
 
-        # Update max_nodes_stored
-        total_nodes_stored = len(open_set) + len(visited)
+                # Track search depth and memory
+                max_search_depth = max(max_search_depth, neighbor.cost)
+
+        # Update max_nodes_stored to reflect the total number of nodes in memory
+        total_nodes_stored = len(frontier) + len(explored)
         max_nodes_stored = max(max_nodes_stored, total_nodes_stored)
 
-    # If no solution is found
-    end_time = time.time()
-    end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    total_time = end_time - start_time
-    total_memory = (end_memory - start_memory) / 1024  # Convert to kB
+        # Debugging: Log frontier size, max nodes stored, and search depth
+        print(f"Frontier size: {len(frontier)}")
+        print(f"Max nodes stored so far: {max_nodes_stored}")
+        print(f"Max search depth so far: {max_search_depth}")
 
-    return ([], -1, nodes_expanded, max_nodes_stored,
-            max_search_depth, total_time, total_memory)
+    # If no solution is found, return failure
+    total_time, total_memory = track_time_and_memory(start_time, start_memory)
+
+    return ([], -1, nodes_expanded, max_nodes_stored, max_search_depth, total_time, total_memory)
+
 '''
 This function runs Iterative Deepening A* Search on the input arena (which is a list of str)
 Returns a ([], int) tuple where the [] represents the solved arena as a list of str and the int represents the cost of the solution
@@ -566,7 +573,7 @@ def dfs_ida(node, g, threshold, visited):
     visited.add(node.current_position)
 
     # URDL order
-    for move_func in MOVE_FUNCS:
+    for move_func in [node.move_up, node.move_right, node.move_down, node.move_left]:
         child = move_func()
         if child and child.current_position not in visited:
             found, t, nodes, max_nodes, depth, path = dfs_ida(child, g + 1, threshold, visited)
