@@ -477,6 +477,7 @@ def astar(arena):
         visited[current_state.current_position] = current_state.cost
 
         # URDL order
+		
         for move_func in MOVE_FUNCS:
             child = move_func(current_state)  # Pass current_state to move_func
             if child:
