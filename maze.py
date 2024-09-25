@@ -364,8 +364,9 @@ def bfs(arena):
 
         max_nodes_stored = max(max_nodes_stored, len(frontier)+len(explored))
 
-        #print(f"Frontier size: {len(frontier)}")
-        #print(f"Explored size: {len(explored)}")
+        # Debugging: Print frontier and explored sizes
+        print(f"Frontier size: {len(frontier)}")
+        print(f"Explored size: {len(explored)}")
 
     # If no solution is found
     total_time, total_memory = track_time_and_memory(start_time, start_memory)
@@ -382,6 +383,7 @@ def bfs(arena):
 This function runs Depth First Search on the input arena (which is a list of str)
 Returns a ([], int) tuple where the [] represents the solved arena as a list of str and the int represents the cost of the solution
 '''
+#python3 maze.py -m arena1.txt -dfs
 def dfs(arena):
     """
     This function runs Depth First Search on the input arena.
@@ -393,49 +395,46 @@ def dfs(arena):
     start_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     start_state = MazeState(arena)
-    stack = [start_state]
+    stack = [start_state]  # The frontier for DFS (LIFO)
     visited = set()  # Use this to track visited nodes
-    visited.add(start_state)
+    visited.add(start_state.current_position)
 
     nodes_expanded = 0  # Number of nodes expanded
-    max_nodes_stored = len(stack) + len(visited)  # Initial nodes in memory
+    max_nodes_stored = len(stack)  # Initial nodes in memory (only stack)
     max_search_depth = 0  # Maximum depth achieved
 
     while stack:
         current_state = stack.pop()
-          # Increment when a node is expanded
 
         # Check if the goal is reached
         if current_state.current_position == current_state.goal:
             # End time and memory measurement
             total_time, total_memory = track_time_and_memory(start_time, start_memory)
 
-            # Reconstruct the path
-            path = []
             cost = current_state.cost
-            while current_state:
-                path.append(current_state.current_position)
-                current_state = current_state.parent
-            path.reverse()
 
             # Modify the arena to mark the path with '*'
-            solved_arena = mark_path_in_arena(arena, path)
+            solved_arena = mark_path_in_arena(arena, current_state)
             return (solved_arena, cost, nodes_expanded, max_nodes_stored,
                     max_search_depth, total_time, total_memory)
-		
-        # Reverse URDL order to maintain proper DFS order
 
         nodes_expanded += 1
-        for move_func in MOVE_FUNCS:
-            child = move_func()
-            if child and child.current_position not in visited:
+
+        # Reverse URDL order to maintain proper DFS order
+        children = current_state.expand()[::-1]
+
+        for child in children:
+            if child.current_position not in visited:
                 visited.add(child.current_position)  # Mark the child node as visited
                 stack.append(child)
                 max_search_depth = max(max_search_depth, child.cost)
 
-        # Update max_nodes_stored
-        total_nodes_stored = len(stack) + len(visited)
-        max_nodes_stored = max(max_nodes_stored, total_nodes_stored)
+        # Calculate total nodes stored only based on the stack (frontier)
+        max_nodes_stored = max(max_nodes_stored, len(stack))
+
+        # Debugging: Log frontier size and max nodes stored at each step
+        print(f"Frontier size: {len(stack)}")
+        print(f"Max nodes stored so far: {max_nodes_stored}")
 
     # If no solution is found
     total_time, total_memory = track_time_and_memory(start_time, start_memory)
